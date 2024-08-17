@@ -74,9 +74,6 @@ export async function POST(request: NextRequest) {
               paragraph = ""; // Reset for the next sentence/paragraph
             }
           }
-          // controller.enqueue(
-          //   encoder.encode(`event: ${JSON.stringify(chat)}\n\n`)
-          // );
 
           controller.close();
         } catch (error) {

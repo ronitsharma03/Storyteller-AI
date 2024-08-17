@@ -72,7 +72,9 @@ function StoryWriter() {
           const parsedData = JSON.parse(data);
 
           if (parsedData.type === "callProgress") {
-            setProgress(parsedData.output[parsedData.output.length - 1].content);
+            setProgress(
+              parsedData.output[parsedData.output.length - 1].content
+            );
             setCurrentTool(parsedData.tool?.description ?? "");
           } else if (parsedData.type === "callStart") {
             setCurrentTool(parsedData.tool?.description ?? "");
@@ -145,10 +147,10 @@ function StoryWriter() {
             </div>
           )}
 
-          <div className="space-y-5">
+          <div className="space-y-5 whitespace-pre-wrap break-words text-left">
+          <span className="mr-5">{">>"}</span>
             {events.map((event, index) => (
               <div key={index}>
-                <span className="mr-5">{">>"}</span>
                 {renderEventMessage(event)}
               </div>
             ))}
