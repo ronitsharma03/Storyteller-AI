@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Button } from "./ui/button";
 import {
@@ -12,20 +10,21 @@ import {
 import { Textarea } from "./ui/textarea";
 import { Frame } from "@gptscript-ai/gptscript";
 import renderEventMessage from "@/lib/renderEventMessage";
+
 const storiesPath = "public/stories";
 
 function StoryWriter() {
   const [story, setStory] = useState<string>("");
   const [pages, setPages] = useState<number>(1);
-  const [progress, setprogress] = useState<string>();
+  const [progress, setProgress] = useState<string>();
   const [runStarted, setRunStarted] = useState<boolean>(false);
-  const [runFinished, setrunFinished] = useState<boolean | null>(null);
-  const [currentTool, setcurrentTool] = useState<string>("");
+  const [runFinished, setRunFinished] = useState<boolean | null>(null);
+  const [currentTool, setCurrentTool] = useState<string>("");
   const [events, setEvents] = useState<Frame[]>([]);
 
   async function runScript() {
     setRunStarted(true);
-    setrunFinished(false);
+    setRunFinished(false);
 
     const response = await fetch("/api/run-script", {
       method: "POST",
@@ -36,7 +35,6 @@ function StoryWriter() {
     });
 
     if (response.ok && response.body) {
-      // Handleing strem from the API
       console.log("streaming started... ");
 
       const reader = response.body.getReader();
@@ -45,78 +43,40 @@ function StoryWriter() {
       handleStream(reader, decoder);
     } else {
       setRunStarted(false);
-      setrunFinished(true);
+      setRunFinished(true);
     }
   }
-
-  // async function handleStream(
-  //   reader: ReadableStreamDefaultReader<Uint8Array>,
-  //   decoder: TextDecoder
-  // ) {
-  //   // managing the stream from the api
-  //   while (true) {
-  //     const { done, value } = await reader.read();
-  //     if (done) break;
-
-  //     // Decoder is used to decode the Uint8Array to string
-  //     const textChunk = decoder.decode(value, { stream: true });
-  //     const eventData = textChunk
-  //       .split("\n\n")
-  //       .filter((line) => line.startsWith("event: "))
-  //       .map((line) => line.replace(/^event: /, ""));
-
-  //       eventData.forEach(data => {
-  //           try {
-  //               const parsedData = JSON.parse(data);
-
-  //               if(parsedData.type === "callProgress"){
-  //                   setprogress(parsedData.output[parsedData.output.length - 1].content);
-  //                   setcurrentTool(parsedData.tool?.description ?? "")
-  //               }else if(parsedData.type === "callStart"){
-  //                    setcurrentTool(parsedData.tool?.description ?? "");
-  //               }else if(parsedData.type === "runFinish"){
-  //                   setrunFinished(true);
-  //                   setRunStarted(false);
-  //               }else{
-  //                   setEvents((prev) => [...prev, parsedData]);
-
-  //               }
-  //           } catch (error) {
-  //               console.log("Failed to parse JSON", error); 
-  //           }
-  //       })
-  //   }
-  // }
 
   async function handleStream(
     reader: ReadableStreamDefaultReader<Uint8Array>,
     decoder: TextDecoder
   ) {
     let accumulatedText = "";
-  
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-  
+
       const textChunk = decoder.decode(value, { stream: true });
       accumulatedText += textChunk;
-  
+
       const eventData = accumulatedText
         .split("\n\n")
         .filter((line) => line.startsWith("event: "))
         .map((line) => line.replace(/^event: /, ""));
-  
-      eventData.forEach((data) => {
+
+      // Make sure to only process fully parsed events
+      eventData.forEach((data, index) => {
         try {
           const parsedData = JSON.parse(data);
-  
+
           if (parsedData.type === "callProgress") {
-            setprogress(parsedData.output[parsedData.output.length - 1].content);
-            setcurrentTool(parsedData.tool?.description ?? "");
+            setProgress(parsedData.output[parsedData.output.length - 1].content);
+            setCurrentTool(parsedData.tool?.description ?? "");
           } else if (parsedData.type === "callStart") {
-            setcurrentTool(parsedData.tool?.description ?? "");
+            setCurrentTool(parsedData.tool?.description ?? "");
           } else if (parsedData.type === "runFinish") {
-            setrunFinished(true);
+            setRunFinished(true);
             setRunStarted(false);
           } else {
             setEvents((prev) => [...prev, parsedData]);
@@ -125,9 +85,11 @@ function StoryWriter() {
           console.log("Failed to parse JSON", error);
         }
       });
+
+      // Make sure to handle incomplete data
+      accumulatedText = accumulatedText.endsWith("\n\n") ? "" : accumulatedText;
     }
   }
-  
 
   return (
     <div className="flex flex-col container max-sm:w-full">
@@ -161,12 +123,12 @@ function StoryWriter() {
       </section>
 
       <section className="flex-1 mt-5 pb-5">
-        <div className="flex flex-col-reverse w-full space-y-2 bg-gray-800 rounded-md text-gray-200 font-mono p-10 h-96 overflow-y-auto ">
+        <div className="flex flex-col-reverse w-full space-y-2 bg-gray-800 rounded-md text-gray-200 font-mono p-10 h-96 overflow-y-auto">
           <div>
             {runFinished === null && (
               <>
                 <p className="animate-pulse">
-                  I'm waiting for you to generate a story above...
+                  I&apos;m waiting for you to generate a story above...
                 </p>
                 <br />
               </>
@@ -182,16 +144,13 @@ function StoryWriter() {
             </div>
           )}
 
-          
           <div className="space-y-5">
-            {
-                events.map((event, index) => (
-                    <div>
-                        <span className="mr-5">{">>"}</span>
-                        {renderEventMessage(event)}
-                    </div>
-                ))
-            }
+            {events.map((event, index) => (
+              <div key={index}>
+                <span className="mr-5">{">>"}</span>
+                {renderEventMessage(event)}
+              </div>
+            ))}
           </div>
 
           {runStarted && (
